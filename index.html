@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Falling Sand Simulation</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: #1a1a2e;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        canvas {
+            border: 2px solid #444;
+            cursor: crosshair;
+            image-rendering: pixelated;
+            image-rendering: crisp-edges;
+        }
+        
+        .material-btn {
+            transition: all 0.2s;
+            border: 2px solid transparent;
+        }
+        
+        .material-btn:hover {
+            transform: scale(1.05);
+            border-color: #fff;
+        }
+        
+        .material-btn.active {
+            border-color: #4ade80;
+            box-shadow: 0 0 15px rgba(74, 222, 128, 0.5);
+        }
+        
+        .tool-btn {
+            transition: all 0.2s;
+        }
+        
+        .tool-btn:hover {
+            transform: scale(1.05);
+        }
+        
+        .tool-btn.active {
+            background: #4ade80 !important;
+            color: #000 !important;
+        }
+        
+        .slider {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 100%;
+            height: 8px;
+            border-radius: 5px;
+            background: #444;
+            outline: none;
+        }
+        
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #4ade80;
+            cursor: pointer;
+        }
+        
+        .slider::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #4ade80;
+            cursor: pointer;
+            border: none;
+        }
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen p-4">
+    <div class="flex gap-4 max-w-7xl w-full">
+        <!-- Left Panel - Tools and Materials -->
+        <div class="bg-gray-800 p-4 rounded-lg shadow-xl" style="width: 250px;">
+            <h1 class="text-2xl font-bold text-white mb-4 text-center">Falling Sand</h1>
+            
+            <!-- Materials -->
+            <div class="mb-6">
+                <h2 class="text-lg font-semibold text-white mb-3">Materials</h2>
+                <div class="grid grid-cols-2 gap-2">
+                    <button class="material-btn active px-3 py-2 rounded text-white font-medium" data-material="sand" style="background: #c2b280;">
+                        Sand
+                    </button>
+                    <button class="material-btn px-3 py-2 rounded text-white font-medium" data-material="water" style="background: #4a90e2;">
+                        Water
+                    </button>
+                    <button class="material-btn px-3 py-2 rounded text-white font-medium" data-material="oil" style="background: #8b7355;">
+                        Oil
+                    </button>
+                    <button class="material-btn px-3 py-2 rounded text-white font-medium" data-material="fire" style="background: #ff6b35;">
+                        Fire
+                    </button>
+                    <button class="material-btn px-3 py-2 rounded text-white font-medium" data-material="smoke" style="background: #6b6b6b;">
+                        Smoke
+                    </button>
+                    <button class="material-btn px-3 py-2 rounded text-white font-medium" data-material="steam" style="background: #d3d3d3;">
+                        Steam
+                    </button>
+                    <button class="material-btn px-3 py-2 rounded bg-gray-300 text-gray-800 font-medium" data-material="stone">
+                        Stone
+                    </button>
+                    <button class="material-btn px-3 py-2 rounded bg-yellow-600 text-white font-medium" data-material="lava">
+                        Lava
+                    </button>
+                    <button class="material-btn px-3 py-2 rounded bg-green-700 text-white font-medium" data-material="plant">
+                        Plant
+                    </button>
+                    <button class="material-btn px-3 py-2 rounded bg-blue-900 text-white font-medium" data-material="ice">
+                        Ice
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Brush Size -->
+            <div class="mb-6">
+                <h2 class="text-lg font-semibold text-white mb-2">Brush Size: <span id="brushSizeLabel">3</span></h2>
+                <input type="range" min="1" max="15" value="3" class="slider" id="brushSize">
+            </div>
+            
+            <!-- Tools -->
+            <div class="mb-6">
+                <h2 class="text-lg font-semibold text-white mb-3">Tools</h2>
+                <div class="grid grid-cols-2 gap-2">
+                    <button class="tool-btn px-3 py-2 rounded bg-red-600 text-white font-medium" id="eraseBtn">
+                        Erase
+                    </button>
+                    <button class="tool-btn px-3 py-2 rounded bg-purple-600 text-white font-medium" id="fillBtn">
+                        Fill
+                    </button>
+                    <button class="tool-btn px-3 py-2 rounded bg-gray-600 text-white font-medium" id="clearBtn">
+                        Clear All
+                    </button>
+                    <button class="tool-btn px-3 py-2 rounded bg-blue-600 text-white font-medium" id="pauseBtn">
+                        Pause
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Save/Load -->
+            <div class="mb-4">
+                <h2 class="text-lg font-semibold text-white mb-3">Save/Load</h2>
+                <div class="flex flex-col gap-2">
+                    <button class="px-3 py-2 rounded bg-green-600 text-white font-medium hover:bg-green-700" id="saveBtn">
+                        Save State
+                    </button>
+                    <button class="px-3 py-2 rounded bg-yellow-600 text-white font-medium hover:bg-yellow-700" id="loadBtn">
+                        Load State
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Info -->
+            <div class="text-xs text-gray-400 mt-6 p-3 bg-gray-900 rounded">
+                <p class="mb-2"><strong>Tips:</strong></p>
+                <ul class="list-disc list-inside space-y-1">
+                    <li>Click/drag to place material</li>
+                    <li>Fire ignites oil & plants</li>
+                    <li>Water extinguishes fire</li>
+                    <li>Fire creates smoke</li>
+                    <li>Water on lava = steam</li>
+                    <li>Ice melts near fire/lava</li>
+                </ul>
+            </div>
+        </div>
+        
+        <!-- Canvas -->
+        <div class="flex-1 flex items-center justify-center">
+            <canvas id="canvas" width="600" height="600"></canvas>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        const CELL_SIZE = 3;
+        const COLS = Math.floor(canvas.width / CELL_SIZE);
+        const ROWS = Math.floor(canvas.height / CELL_SIZE);
+        
+        let grid = [];
+        let gridNext = [];
+        let currentMaterial = 'sand';
+        let brushSize = 3;
+        let isDrawing = false;
+        let isPaused = false;
+        let isFillMode = false;
+        let isEraseMode = false;
+        
+        // Material properties
+        const MATERIALS = {
+            empty: { color: [0, 0, 0, 0], type: 'empty', density: 0 },
+            sand: { color: [194, 178, 128], type: 'powder', density: 3, flammable: false },
+            water: { color: [74, 144, 226], type: 'liquid', density: 2, flammable: false },
+            oil: { color: [139, 115, 85], type: 'liquid', density: 1, flammable: true },
+            fire: { color: [255, 107, 53], type: 'gas', density: -1, lifetime: 60, flammable: false },
+            smoke: { color: [107, 107, 107], type: 'gas', density: -2, lifetime: 120, flammable: false },
+            steam: { color: [211, 211, 211], type: 'gas', density: -2, lifetime: 100, flammable: false },
+            stone: { color: [128, 128, 128], type: 'solid', density: 10, flammable: false },
+            lava: { color: [255, 140, 0], type: 'liquid', density: 4, flammable: false, hot: true },
+            plant: { color: [34, 139, 34], type: 'solid', density: 1, flammable: true },
+            ice: { color: [173, 216, 230], type: 'solid', density: 2, flammable: false, meltable: true }
+        };
+        
+        // Initialize grid
+        function initGrid() {
+            grid = [];
+            gridNext = [];
+            for (let y = 0; y < ROWS; y++) {
+                grid[y] = [];
+                gridNext[y] = [];
+                for (let x = 0; x < COLS; x++) {
+                    grid[y][x] = { type: 'empty', lifetime: 0 };
+                    gridNext[y][x] = { type: 'empty', lifetime: 0 };
+                }
+            }
+        }
+        
+        // Get cell at position
+        function getCell(x, y) {
+            if (x < 0 || x >= COLS || y < 0 || y >= ROWS) return null;
+            return grid[y][x];
+        }
+        
+        // Set cell at position
+        function setCell(x, y, type) {
+            if (x < 0 || x >= COLS || y < 0 || y >= ROWS) return;
+            gridNext[y][x] = { type, lifetime: MATERIALS[type].lifetime || 0 };
+        }
+        
+        // Check if position is empty
+        function isEmpty(x, y) {
+            if (x < 0 || x >= COLS || y < 0 || y >= ROWS) return false;
+            return grid[y][x].type === 'empty';
+        }
+        
+        // Move cell from (x1,y1) to (x2,y2)
+        function moveCell(x1, y1, x2, y2) {
+            if (x2 < 0 || x2 >= COLS || y2 < 0 || y2 >= ROWS) return false;
+            gridNext[y2][x2] = grid[y1][x1];
+            gridNext[y1][x1] = { type: 'empty', lifetime: 0 };
+            return true;
+        }
+        
+        // Swap cells
+        function swapCells(x1, y1, x2, y2) {
+            if (x2 < 0 || x2 >= COLS || y2 < 0 || y2 >= ROWS) return false;
+            const temp = grid[y1][x1];
+            gridNext[y1][x1] = grid[y2][x2];
+            gridNext[y2][x2] = temp;
+            return true;
+        }
+        
+        // Check material interactions
+        function checkInteraction(x, y) {
+            const cell = grid[y][x];
+            const material = MATERIALS[cell.type];
+            
+            // Check neighbors for interactions
+            const neighbors = [
+                [x-1, y], [x+1, y], [x, y-1], [x, y+1],
+                [x-1, y-1], [x+1, y-1], [x-1, y+1], [x+1, y+1]
+            ];
+            
+            for (const [nx, ny] of neighbors) {
+                if (nx < 0 || nx >= COLS || ny < 0 || ny >= ROWS) continue;
+                const neighbor = grid[ny][nx];
+                
+                // Fire interactions
+                if (cell.type === 'fire') {
+                    const nMaterial = MATERIALS[neighbor.type];
+                    
+                    // Fire ignites flammable materials
+                    if (nMaterial.flammable && Math.random() < 0.1) {
+                        gridNext[ny][nx] = { type: 'fire', lifetime: 60 };
+                    }
+                    
+                    // Water extinguishes fire
+                    if (neighbor.type === 'water' && Math.random() < 0.3) {
+                        gridNext[y][x] = { type: 'steam', lifetime: 100 };
+                        gridNext[ny][nx] = { type: 'steam', lifetime: 100 };
+                    }
+                    
+                    // Ice near fire
+                    if (neighbor.type === 'ice' && Math.random() < 0.1) {
+                        gridNext[ny][nx] = { type: 'water', lifetime: 0 };
+                    }
+                }
+                
+                // Lava interactions
+                if (cell.type === 'lava') {
+                    // Lava + water = steam + stone
+                    if (neighbor.type === 'water' && Math.random() < 0.2) {
+                        gridNext[y][x] = { type: 'stone', lifetime: 0 };
+                        gridNext[ny][nx] = { type: 'steam', lifetime: 100 };
+                    }
+                    
+                    // Lava ignites flammable
+                    if (MATERIALS[neighbor.type].flammable && Math.random() < 0.15) {
+                        gridNext[ny][nx] = { type: 'fire', lifetime: 60 };
+                    }
+                    
+                    // Lava melts ice
+                    if (neighbor.type === 'ice' && Math.random() < 0.2) {
+                        gridNext[ny][nx] = { type: 'water', lifetime: 0 };
+                    }
+                }
+                
+                // Ice near hot things
+                if (cell.type === 'ice') {
+                    if ((neighbor.type === 'fire' || neighbor.type === 'lava') && Math.random() < 0.05) {
+                        gridNext[y][x] = { type: 'water', lifetime: 0 };
+                    }
+                }
+            }
+        }
+        
+        // Update simulation
+        function updateSimulation() {
+            // Copy current grid to next grid
+            for (let y = 0; y < ROWS; y++) {
+                for (let x = 0; x < COLS; x++) {
+                    gridNext[y][x] = { ...grid[y][x] };
+                }
+            }
+            
+            // Process cells bottom to top, randomize horizontal direction
+            const startX = Math.random() < 0.5 ? 0 : COLS - 1;
+            const dirX = startX === 0 ? 1 : -1;
+            
+            for (let y = ROWS - 1; y >= 0; y--) {
+                for (let xi = startX; xi >= 0 && xi < COLS; xi += dirX) {
+                    const x = xi;
+                    const cell = grid[y][x];
+                    
+                    if (cell.type === 'empty') continue;
+                    
+                    const material = MATERIALS[cell.type];
+                    
+                    // Check interactions
+                    checkInteraction(x, y);
+                    
+                    // Handle lifetime (for fire, smoke, steam)
+                    if (material.lifetime && gridNext[y][x].lifetime > 0) {
+                        gridNext[y][x].lifetime--;
+                        if (gridNext[y][x].lifetime <= 0) {
+                            if (cell.type === 'fire') {
+                                // Fire creates smoke
+                                if (Math.random() < 0.5) {
+                                    gridNext[y][x] = { type: 'smoke', lifetime: 120 };
+                                } else {
+                                    gridNext[y][x] = { type: 'empty', lifetime: 0 };
+                                }
+                            } else {
+                                gridNext[y][x] = { type: 'empty', lifetime: 0 };
+                            }
+                            continue;
+                        }
+                    }
+                    
+                    // Movement based on type
+                    if (material.type === 'powder') {
+                        // Try to fall down
+                        if (isEmpty(x, y + 1)) {
+                            moveCell(x, y, x, y + 1);
+                        }
+                        // Try diagonal
+                        else if (isEmpty(x - 1, y + 1) && isEmpty(x + 1, y + 1)) {
+                            const dir = Math.random() < 0.5 ? -1 : 1;
+                            moveCell(x, y, x + dir, y + 1);
+                        }
+                        else if (isEmpty(x - 1, y + 1)) {
+                            moveCell(x, y, x - 1, y + 1);
+                        }
+                        else if (isEmpty(x + 1, y + 1)) {
+                            moveCell(x, y, x + 1, y + 1);
+                        }
+                    }
+                    else if (material.type === 'liquid') {
+                        const below = getCell(x, y + 1);
+                        
+                        // Fall down
+                        if (isEmpty(x, y + 1)) {
+                            moveCell(x, y, x, y + 1);
+                        }
+                        // Swap with lighter liquid
+                        else if (below && MATERIALS[below.type].type === 'liquid' && 
+                                 MATERIALS[below.type].density < material.density) {
+                            swapCells(x, y, x, y + 1);
+                        }
+                        // Diagonal down
+                        else if (isEmpty(x - 1, y + 1) && isEmpty(x + 1, y + 1)) {
+                            const dir = Math.random() < 0.5 ? -1 : 1;
+                            moveCell(x, y, x + dir, y + 1);
+                        }
+                        else if (isEmpty(x - 1, y + 1)) {
+                            moveCell(x, y, x - 1, y + 1);
+                        }
+                        else if (isEmpty(x + 1, y + 1)) {
+                            moveCell(x, y, x + 1, y + 1);
+                        }
+                        // Spread horizontally
+                        else {
+                            const dirs = [-1, 1];
+                            const dir = dirs[Math.floor(Math.random() * dirs.length)];
+                            const spread = Math.floor(Math.random() * 3) + 1;
+                            
+                            for (let i = 1; i <= spread; i++) {
+                                if (isEmpty(x + dir * i, y)) {
+                                    moveCell(x, y, x + dir * i, y);
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    else if (material.type === 'gas') {
+                        // Gases rise
+                        if (isEmpty(x, y - 1)) {
+                            moveCell(x, y, x, y - 1);
+                        }
+                        // Diagonal up
+                        else if (isEmpty(x - 1, y - 1) && isEmpty(x + 1, y - 1)) {
+                            const dir = Math.random() < 0.5 ? -1 : 1;
+                            moveCell(x, y, x + dir, y - 1);
+                        }
+                        else if (isEmpty(x - 1, y - 1)) {
+                            moveCell(x, y, x - 1, y - 1);
+                        }
+                        else if (isEmpty(x + 1, y - 1)) {
+                            moveCell(x, y, x + 1, y - 1);
+                        }
+                        // Spread horizontally
+                        else {
+                            const dirs = [-1, 1];
+                            const dir = dirs[Math.floor(Math.random() * dirs.length)];
+                            if (isEmpty(x + dir, y)) {
+                                moveCell(x, y, x + dir, y);
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // Swap grids
+            [grid, gridNext] = [gridNext, grid];
+        }
+        
+        // Render grid
+        function render() {
+            const imageData = ctx.createImageData(canvas.width, canvas.height);
+            const data = imageData.data;
+            
+            for (let y = 0; y < ROWS; y++) {
+                for (let x = 0; x < COLS; x++) {
+                    const cell = grid[y][x];
+                    const material = MATERIALS[cell.type];
+                    let [r, g, b, a] = material.color;
+                    
+                    // Add variation to colors
+                    if (cell.type !== 'empty') {
+                        const variation = Math.random() * 20 - 10;
+                        r = Math.max(0, Math.min(255, r + variation));
+                        g = Math.max(0, Math.min(255, g + variation));
+                        b = Math.max(0, Math.min(255, b + variation));
+                        a = a !== undefined ? a : 255;
+                        
+                        // Flicker for fire
+                        if (cell.type === 'fire') {
+                            const flicker = Math.random();
+                            r = Math.floor(r + flicker * 50);
+                            g = Math.floor(g - flicker * 30);
+                        }
+                    } else {
+                        a = 255;
+                    }
+                    
+                    // Draw cell
+                    for (let dy = 0; dy < CELL_SIZE; dy++) {
+                        for (let dx = 0; dx < CELL_SIZE; dx++) {
+                            const px = x * CELL_SIZE + dx;
+                            const py = y * CELL_SIZE + dy;
+                            const index = (py * canvas.width + px) * 4;
+                            
+                            data[index] = r;
+                            data[index + 1] = g;
+                            data[index + 2] = b;
+                            data[index + 3] = a;
+                        }
+                    }
+                }
+            }
+            
+            ctx.putImageData(imageData, 0, 0);
+        }
+        
+        // Place material at position
+        function placeMaterial(x, y, material) {
+            const gridX = Math.floor(x / CELL_SIZE);
+            const gridY = Math.floor(y / CELL_SIZE);
+            
+            for (let dy = -brushSize; dy <= brushSize; dy++) {
+                for (let dx = -brushSize; dx <= brushSize; dx++) {
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    if (dist <= brushSize) {
+                        const px = gridX + dx;
+                        const py = gridY + dy;
+                        if (px >= 0 && px < COLS && py >= 0 && py < ROWS) {
+                            grid[py][px] = { 
+                                type: material, 
+                                lifetime: MATERIALS[material].lifetime || 0 
+                            };
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Fill screen with material
+        function fillScreen(material) {
+            for (let y = 0; y < ROWS; y++) {
+                for (let x = 0; x < COLS; x++) {
+                    grid[y][x] = { 
+                        type: material, 
+                        lifetime: MATERIALS[material].lifetime || 0 
+                    };
+                }
+            }
+        }
+        
+        // Clear screen
+        function clearScreen() {
+            initGrid();
+        }
+        
+        // Mouse events
+        canvas.addEventListener('mousedown', (e) => {
+            isDrawing = true;
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            
+            if (isFillMode) {
+                fillScreen(currentMaterial);
+                isFillMode = false;
+                document.getElementById('fillBtn').classList.remove('active');
+            } else {
+                const material = isEraseMode ? 'empty' : currentMaterial;
+                placeMaterial(x, y, material);
+            }
+        });
+        
+        canvas.addEventListener('mousemove', (e) => {
+            if (isDrawing && !isFillMode) {
+                const rect = canvas.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                const material = isEraseMode ? 'empty' : currentMaterial;
+                placeMaterial(x, y, material);
+            }
+        });
+        
+        canvas.addEventListener('mouseup', () => {
+            isDrawing = false;
+        });
+        
+        canvas.addEventListener('mouseleave', () => {
+            isDrawing = false;
+        });
+        
+        // Material buttons
+        document.querySelectorAll('.material-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.material-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                currentMaterial = btn.dataset.material;
+                isEraseMode = false;
+                isFillMode = false;
+                document.getElementById('eraseBtn').classList.remove('active');
+                document.getElementById('fillBtn').classList.remove('active');
+            });
+        });
+        
+        // Brush size
+        const brushSizeSlider = document.getElementById('brushSize');
+        const brushSizeLabel = document.getElementById('brushSizeLabel');
+        brushSizeSlider.addEventListener('input', (e) => {
+            brushSize = parseInt(e.target.value);
+            brushSizeLabel.textContent = brushSize;
+        });
+        
+        // Tool buttons
+        document.getElementById('eraseBtn').addEventListener('click', () => {
+            isEraseMode = !isEraseMode;
+            isFillMode = false;
+            document.getElementById('eraseBtn').classList.toggle('active');
+            document.getElementById('fillBtn').classList.remove('active');
+            document.querySelectorAll('.material-btn').forEach(b => b.classList.remove('active'));
+        });
+        
+        document.getElementById('fillBtn').addEventListener('click', () => {
+            isFillMode = !isFillMode;
+            isEraseMode = false;
+            document.getElementById('fillBtn').classList.toggle('active');
+            document.getElementById('eraseBtn').classList.remove('active');
+        });
+        
+        document.getElementById('clearBtn').addEventListener('click', () => {
+            clearScreen();
+        });
+        
+        document.getElementById('pauseBtn').addEventListener('click', (e) => {
+            isPaused = !isPaused;
+            e.target.textContent = isPaused ? 'Resume' : 'Pause';
+            e.target.classList.toggle('active');
+        });
+        
+        // Save/Load
+        document.getElementById('saveBtn').addEventListener('click', () => {
+            const saveData = {
+                grid: grid,
+                timestamp: new Date().toISOString()
+            };
+            localStorage.setItem('fallingSandSave', JSON.stringify(saveData));
+            alert('State saved successfully!');
+        });
+        
+        document.getElementById('loadBtn').addEventListener('click', () => {
+            const saveData = localStorage.getItem('fallingSandSave');
+            if (saveData) {
+                const data = JSON.parse(saveData);
+                grid = data.grid;
+                alert('State loaded successfully!');
+            } else {
+                alert('No saved state found!');
+            }
+        });
+        
+        // Main loop
+        function gameLoop() {
+            if (!isPaused) {
+                updateSimulation();
+            }
+            render();
+            requestAnimationFrame(gameLoop);
+        }
+        
+        // Initialize and start
+        initGrid();
+        gameLoop();
+    </script>
+</body>
+</html>
